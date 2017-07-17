@@ -1,4 +1,5 @@
 #!/bin/bash
+#set -e
 #Usage: ./test/integration/prepIntegrationTests.sh <yourapikeyintheformofABCD:EFGH> <openwhis hostname> <openwhisk namespace> <api gatewaytoken>
 # Run from the incubator-openwhisk-client-js
 
@@ -39,14 +40,9 @@ if [ $override_key == "guest" ]; then
   override_key="$result"
   getvalue "$propInfo" "whisk API host" "$result"
   override_host="$result"
-  #getvalue "$propInfo" "whisk namespace" "$result"
-  #override_namespace="$result"
   override_namespace="guest"
   override_token=""
 
-  #echo "override_key: $override_key"
-  #echo "override_host: $override_host"
-  #echo "override_namespace: $override_namespace"
 fi
 
 
@@ -64,6 +60,7 @@ else
 fi
 
 #verify credentials are acceptable:
+echo "Checking credentials"
 credentialsCheck=$( echo no | curl -s $kflag -u $__OW_API_KEY https://$__OW_API_HOST/api/v1/namespaces )
 credentialError=$(jq -r ".error" <<< $credentialsCheck &>/dev/null)
 if [[ $PIPESTATUS -eq 0 ]]; then
@@ -74,18 +71,22 @@ fi
 
 # make temporary files so that we can use the wsk cli to create actions and triggers.
 # in the instructions the contests of hello and tests are identical so we only make 1 version of the file, and then just create two actions from it.
+echo "Make temporary resource files"
 mkdir temp
 touch temp/tests.js
 touch temp/resourceExists
 touch temp/resourceError
 echo "function main() {return {payload: 'Hello world'};}" > temp/tests.js
 
+echo "Create wsk actions and triggers for use by tests"
 wsk $iflag action update hello temp/tests.js
 wsk $iflag action update tests temp/tests.js
 wsk $iflag trigger update sample
 
 #run tests
+echo "running tests"
 npm run test-integration $iflag
+RUNSTAT=$PIPESTATUS
 
 #cleanup resources that may or may not exist. Hide stdout/stderr
 function cleanresources {
@@ -98,6 +99,7 @@ function cleanresources {
 }
 
 #clean up artifacts generated during a bad-testRun
+echo "clean resources"
 cleanresources action routeAction
 cleanresources action random_package_action_test
 cleanresources action random_action_test
@@ -116,3 +118,5 @@ wsk $iflag action delete tests
 wsk $iflag trigger delete sample
 
 echo "script finished"
+
+exit $RUNSTAT

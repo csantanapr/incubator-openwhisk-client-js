@@ -1,0 +1,46 @@
+#!/bin/bash
+set -e
+
+# Build script for Travis-CI.
+
+SCRIPTDIR=$(cd $(dirname "$0") && pwd)
+ROOTDIR="$SCRIPTDIR/../.."
+WHISKDIR="$ROOTDIR/../openwhisk"
+
+# Install OpenWhisk
+cd $WHISKDIR/ansible
+
+ANSIBLE_CMD="ansible-playbook -i environments/local -e docker_image_prefix=testing"
+GRADLE_PROJS_SKIP="-x :core:pythonAction:distDocker  -x :core:python2Action:distDocker -x :core:swift3Action:distDocker -x :core:javaAction:distDocker"
+
+$ANSIBLE_CMD setup.yml
+$ANSIBLE_CMD prereq.yml
+$ANSIBLE_CMD couchdb.yml
+$ANSIBLE_CMD initdb.yml
+$ANSIBLE_CMD apigateway.yml
+
+cd $WHISKDIR
+./gradlew distDocker -PdockerImagePrefix=testing $GRADLE_PROJS_SKIP
+
+cd $WHISKDIR/ansible
+
+$ANSIBLE_CMD wipe.yml
+$ANSIBLE_CMD openwhisk.yml
+
+cd $WHISKDIR
+cat whisk.properties
+
+# Set Environment
+export OPENWHISK_HOME=$WHISKDIR
+
+# Set up CLI tool used by prereq script
+sudo cp $WHISKDIR/bin/wsk /usr/bin/wsk
+
+edgehost=$(cat $WHISKDIR/whisk.properties | grep edge.host= | sed s/edge\.host=//)
+wsk property set --apihost $edgehost
+wsk property set --auth "$(cat $WHISKDIR/ansible/files/auth.guest)"
+
+# Test
+cd $ROOTDIR
+npm install
+./test/integration/prepIntegrationTests.sh guest
