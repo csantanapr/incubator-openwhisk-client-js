@@ -9,9 +9,9 @@ if ! type "wsk" > /dev/null; then
   exit 1
 fi
 
-# Assert NODEJS6/NPM3 is default
-if [[ ! $(node --version) =~ v6.[0-9]*.[0-9]* ]]; then
-  echo "Exiting program; npm 6 not detected"
+NODE_VERSION_MAJOR=`node --version | awk -Fv '{print $2}' | awk -F. '{print $1}'`
+if [ ${NODE_VERSION_MAJOR} -lt 6 ]; then
+  echo "Exiting program; node less than version 6 detected"
   exit 1
 fi
 
