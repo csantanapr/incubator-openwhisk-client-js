@@ -10,8 +10,7 @@ WHISKDIR="$ROOTDIR/../openwhisk"
 # Install OpenWhisk
 cd $WHISKDIR/ansible
 
-ANSIBLE_CMD="ansible-playbook -i environments/local -e docker_image_prefix=testing"
-GRADLE_PROJS_SKIP="-x :core:pythonAction:distDocker  -x :core:python2Action:distDocker -x :core:swift3Action:distDocker -x :core:javaAction:distDocker"
+ANSIBLE_CMD="ansible-playbook -i environments/local -e docker_image_prefix=openwhisk"
 
 $ANSIBLE_CMD setup.yml
 $ANSIBLE_CMD prereq.yml
@@ -20,7 +19,7 @@ $ANSIBLE_CMD initdb.yml
 $ANSIBLE_CMD apigateway.yml
 
 cd $WHISKDIR
-./gradlew distDocker -PdockerImagePrefix=testing $GRADLE_PROJS_SKIP
+./gradlew :tools:cli:distDocker -PdockerImagePrefix=openwhisk
 
 cd $WHISKDIR/ansible
 
